@@ -5,7 +5,7 @@ import { getPool } from "@/lib/db";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  if (!process.env.DATABASE_URL) return NextResponse.json({ error: "Login belum dikonfigurasi. Hubungi pengelola toko." }, { status: 503 });
+  if (!process.env.DATABASE_URL) return NextResponse.json({ error: "Sistem ini masih dalam tahap pengembangan." }, { status: 503 });
   try {
     const text = await request.text();
     if (text.length > 4096) return NextResponse.json({ error: "Data terlalu besar." }, { status: 400 });

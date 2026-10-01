@@ -1,6 +1,5 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { CopyAddress } from "@/components/copy-address";
 import { StoreMap } from "@/components/store-map";
 
 export const metadata: Metadata = { title: "Offline Store Yogyakarta" };
@@ -32,7 +31,6 @@ export default function StoresPage() {
               <a className="button button-outline-dark" href={mapsUrl} target="_blank" rel="noopener noreferrer"><span className="material-symbols-outlined">map</span> LIHAT DI PETA</a>
               <a className="button button-outline-dark" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><span className="material-symbols-outlined">chat</span> WHATSAPP TOKO</a>
             </div>
-            <CopyAddress address={address} />
           </div>
         </article>
         <div className="store-map-panel"><StoreMap cartoKey={process.env.NEXT_PUBLIC_CARTO_BASEMAP_KEY ?? ""} /></div>
