@@ -26,11 +26,11 @@ export function NavigationProgress() {
   useEffect(() => {
     // Intercept link clicks to start progress
     function handleClick(e: MouseEvent) {
-      const anchor = (e.target as Element).closest("a");
-      if (!anchor) return;
-      const href = anchor.getAttribute("href");
-      if (!href || href.startsWith("#") || href.startsWith("http") || href.startsWith("mailto")) return;
-      if (href === pathname) return;
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const anchor = e.target instanceof Element ? e.target.closest("a") : null;
+      if (!anchor || !anchor.hasAttribute("href") || anchor.hasAttribute("download") || (anchor.target && anchor.target !== "_self")) return;
+      const destination = new URL(anchor.href);
+      if (!["http:", "https:"].includes(destination.protocol) || destination.origin !== window.location.origin || destination.pathname === pathname) return;
 
       setVisible(true);
       setProgress(15);
@@ -55,6 +55,7 @@ export function NavigationProgress() {
 
   return (
     <div
+      className="nav-progress"
       aria-hidden="true"
       style={{
         position: "fixed",

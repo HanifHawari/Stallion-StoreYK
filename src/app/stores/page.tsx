@@ -16,7 +16,7 @@ export default function StoresPage() {
       <div className="site-container stores-page-heading"><span className="eyebrow">VISIT US IN YOGYAKARTA</span><h1>STALLION STORE JOGJA</h1><p>Lihat lokasi toko, hubungi kami, atau buka petunjuk arah untuk berkunjung langsung.</p></div>
       <div className="site-container store-layout">
         <article className="store-info-card">
-          <img className="store-photo" src="/images/stores/stallion-store-jogja.png" alt="Tampak depan Stallion Store di Gejayan, Yogyakarta" />
+          <img className="store-photo" src="/images/stores/stallion-store-jogja.webp" alt="Tampak depan Stallion Store di Gejayan, Yogyakarta" />
           <div className="store-info-content">
             <span className="store-location-label">GEJAYAN, SLEMAN</span>
             <h2>STALLION STORE JOGJA</h2>

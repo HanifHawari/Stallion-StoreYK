@@ -2,37 +2,23 @@
 import type { PoolClient } from "pg";
 import { NextResponse } from "next/server";
 import { getPool } from "@/lib/db";
-import { RESERVATION_HOURS, SHIPPING_FEE_IDR } from "@/lib/commerce";
+import { CheckoutError, parseCheckoutItems, record, RESERVATION_HOURS, type CheckoutItem } from "@/lib/commerce";
+import { getShippingRates, isShippingConfigured } from "@/lib/shipping";
 import { createMidtransTransaction } from "@/lib/midtrans";
 import { getCurrentCustomer } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-type CheckoutItem = { productId: string; size: string; quantity: number };
 type CheckoutCustomer = { name: string; email: string; phone: string; address: string; city: string; postalCode: string };
+type ShippingSelection = { courierCode: string; serviceCode: string; price: number };
 type VariantRow = { id: string; stock: number; active: boolean; name: string; image_url: string; price_idr: number; size_eu: string };
-type OrderLine = { variantId: string; productName: string; image: string; size: string; unitPrice: number; quantity: number };
+type OrderLine = { productId: string; variantId: string; productName: string; image: string; size: string; unitPrice: number; quantity: number };
 
-class CheckoutError extends Error { constructor(message: string, public status = 400) { super(message); } }
-function record(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }
 function clean(value: unknown, max: number): string { return typeof value === "string" ? value.trim().slice(0, max + 1) : ""; }
 
-function parseCheckout(body: unknown): { items: CheckoutItem[]; customer: CheckoutCustomer } {
+function parseCheckout(body: unknown): { items: CheckoutItem[]; customer: CheckoutCustomer; shipping: ShippingSelection } {
   if (!record(body) || !Array.isArray(body.items) || !record(body.customer)) throw new CheckoutError("Data checkout tidak valid.");
-  if (body.items.length < 1 || body.items.length > 10) throw new CheckoutError("Keranjang harus berisi 1 sampai 10 varian sepatu.");
-  const byKey = new Map<string, CheckoutItem>();
-  for (const raw of body.items) {
-    if (!record(raw)) throw new CheckoutError("Produk tidak valid.");
-    const productId = clean(raw.productId, 100);
-    const size = clean(raw.size, 10);
-    const quantity = raw.quantity;
-    if (!productId || productId.length > 100 || !size || size.length > 10 || !Number.isInteger(quantity) || typeof quantity !== "number" || quantity < 1 || quantity > 10) throw new CheckoutError("Ukuran atau jumlah sepatu tidak valid.");
-    const key = `${productId}:${size}`;
-    const prior = byKey.get(key);
-    const totalQuantity = (prior?.quantity ?? 0) + quantity;
-    if (totalQuantity > 10) throw new CheckoutError("Maksimal 10 pasang per ukuran.");
-    byKey.set(key, { productId, size, quantity: totalQuantity });
-  }
+  const items = parseCheckoutItems(body.items);
   const c = body.customer;
   const customer: CheckoutCustomer = {
     name: clean(c.name, 100), email: clean(c.email, 254).toLowerCase(),
@@ -44,10 +30,14 @@ function parseCheckout(body: unknown): { items: CheckoutItem[]; customer: Checko
     customer.address.length > 300 || customer.city.length < 2 || customer.city.length > 100 || !/^[0-9]{5}$/.test(customer.postalCode)) {
     throw new CheckoutError("Lengkapi nama, email, nomor telepon, dan alamat pengiriman yang valid.");
   }
-  return { items: [...byKey.values()].sort((a, b) => `${a.productId}:${a.size}`.localeCompare(`${b.productId}:${b.size}`)), customer };
+  const shipping = body.shipping;
+  if (!record(shipping) || typeof shipping.courierCode !== "string" || !/^[a-z0-9_-]{1,50}$/.test(shipping.courierCode) ||
+    typeof shipping.serviceCode !== "string" || !/^[a-z0-9_-]{1,50}$/.test(shipping.serviceCode) ||
+    typeof shipping.price !== "number" || !Number.isSafeInteger(shipping.price) || shipping.price < 0) throw new CheckoutError("Pilih layanan pengiriman terlebih dahulu.");
+  return { items, customer, shipping: { courierCode: shipping.courierCode, serviceCode: shipping.serviceCode, price: shipping.price } };
 }
 
-async function createOrder(client: PoolClient, items: CheckoutItem[], customer: CheckoutCustomer, customerId: string) {
+async function createOrder(client: PoolClient, items: CheckoutItem[], customer: CheckoutCustomer, customerId: string, shipping: ShippingSelection) {
   const lines: OrderLine[] = [];
   let subtotal = 0;
   for (const item of items) {
@@ -66,18 +56,21 @@ async function createOrder(client: PoolClient, items: CheckoutItem[], customer: 
     `, [row.id]);
     if (row.stock - reserved.rows[0].quantity < item.quantity) throw new CheckoutError(`Stok ukuran ${item.size} untuk ${row.name} tidak mencukupi.`);
     subtotal += row.price_idr * item.quantity;
-    lines.push({ variantId: row.id, productName: row.name, image: row.image_url, size: row.size_eu, unitPrice: row.price_idr, quantity: item.quantity });
+    lines.push({ productId: item.productId, variantId: row.id, productName: row.name, image: row.image_url, size: row.size_eu, unitPrice: row.price_idr, quantity: item.quantity });
   }
-  const total = subtotal + SHIPPING_FEE_IDR;
+  const rates = await getShippingRates(customer.postalCode, lines.map((line) => ({ productId: line.productId, name: line.productName, value: line.unitPrice, quantity: line.quantity })));
+  const rate = rates.find((item) => item.courierCode === shipping.courierCode && item.serviceCode === shipping.serviceCode);
+  if (!rate || rate.price !== shipping.price) throw new CheckoutError("Tarif ongkir berubah atau layanan tidak tersedia. Cek ongkir kembali sebelum membayar.", 409);
+  const total = subtotal + rate.price;
   if (!Number.isSafeInteger(total) || total > 2_000_000_000) throw new CheckoutError("Total transaksi melebihi batas checkout.");
   const orderId = `ST-${randomUUID()}`;
   const createdAt = new Date();
   const expiresAt = new Date(createdAt.getTime() + RESERVATION_HOURS * 60 * 60 * 1000);
   await client.query(`
     INSERT INTO orders (id, customer_name, customer_email, customer_phone, shipping_address,
-      shipping_city, shipping_postal_code, subtotal_idr, shipping_idr, total_idr, status, expires_at, created_at, customer_id)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'awaiting_payment',$11,$12,$13)
-  `, [orderId, customer.name, customer.email, customer.phone, customer.address, customer.city, customer.postalCode, subtotal, SHIPPING_FEE_IDR, total, expiresAt, createdAt, customerId]);
+      shipping_city, shipping_postal_code, subtotal_idr, shipping_idr, total_idr, status, expires_at, created_at, customer_id, shipping_courier_code, shipping_service_code)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'awaiting_payment',$11,$12,$13,$14,$15)
+  `, [orderId, customer.name, customer.email, customer.phone, customer.address, customer.city, customer.postalCode, subtotal, rate.price, total, expiresAt, createdAt, customerId, rate.courierCode, rate.serviceCode]);
   for (const line of lines) {
     await client.query(`
       INSERT INTO order_items (id, order_id, variant_id, product_name, size_eu, image_url, unit_price_idr, quantity)
@@ -88,6 +81,7 @@ async function createOrder(client: PoolClient, items: CheckoutItem[], customer: 
 }
 
 export async function POST(request: Request) {
+  if (!isShippingConfigured()) return NextResponse.json({ error: "Tarif pengiriman belum tersedia. Silakan coba lagi nanti." }, { status: 503 });
   if (!process.env.DATABASE_URL || !process.env.MIDTRANS_SERVER_KEY || !process.env.PUBLIC_SITE_URL) {
     return NextResponse.json({ error: "Checkout belum dikonfigurasi oleh pengelola toko." }, { status: 503 });
   }
@@ -95,7 +89,7 @@ export async function POST(request: Request) {
   try { user = await getCurrentCustomer(); }
   catch { return NextResponse.json({ error: "Sesi akun belum dapat diperiksa." }, { status: 503 }); }
   if (!user) return NextResponse.json({ error: "Login diperlukan untuk checkout." }, { status: 401 });
-  let input: { items: CheckoutItem[]; customer: CheckoutCustomer };
+  let input: ReturnType<typeof parseCheckout>;
   try {
     const text = await request.text();
     if (text.length > 16000) throw new CheckoutError("Data checkout terlalu besar.");
@@ -120,7 +114,7 @@ export async function POST(request: Request) {
   }
   try {
     await client.query("BEGIN");
-    order = await createOrder(client, input.items, input.customer, user.id);
+    order = await createOrder(client, input.items, input.customer, user.id, input.shipping);
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");

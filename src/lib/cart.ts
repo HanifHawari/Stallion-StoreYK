@@ -23,8 +23,10 @@ export function readCart(): CartItem[] {
     return raw.filter((item): item is CartItem =>
       typeof item === "object" && item !== null &&
       typeof item.key === "string" && typeof item.productId === "string" &&
+      typeof item.slug === "string" && typeof item.brand === "string" && typeof item.preview === "boolean" &&
       typeof item.size === "string" && typeof item.name === "string" &&
       typeof item.image === "string" && typeof item.price === "number" &&
+      Number.isSafeInteger(item.price) && item.price > 0 &&
       Number.isInteger(item.quantity) && item.quantity > 0 && item.quantity <= 10
     );
   } catch {
@@ -32,9 +34,12 @@ export function readCart(): CartItem[] {
   }
 }
 
-export function writeCart(items: CartItem[]): void {
-  localStorage.setItem(CART_KEY, JSON.stringify(items));
-  window.dispatchEvent(new Event("stallion-cart-change"));
+export function writeCart(items: CartItem[]): boolean {
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(items));
+    window.dispatchEvent(new Event("stallion-cart-change"));
+    return true;
+  } catch { return false; }
 }
 
 export function addToCart(product: Product, size: string): boolean {
@@ -55,6 +60,5 @@ export function addToCart(product: Product, size: string): boolean {
     quantity: 1,
     preview: Boolean(product.preview),
   });
-  writeCart(items);
-  return true;
+  return writeCart(items);
 }

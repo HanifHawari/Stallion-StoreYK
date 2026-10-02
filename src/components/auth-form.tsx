@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 export function AuthForm({ mode, next }: { mode: "login" | "register"; next: string }) {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,6 +43,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "register"; next: str
       <div className="auth-story-copy"><span>INTERNATIONAL FOOTWEAR</span><h1>YOUR NEXT STEP<br />STARTS HERE.</h1><p>Simpan pilihanmu dan lanjutkan perjalanan belanja dengan akun Stallion Store.</p></div>
     </div>
     <div className="auth-form-side"><div className="auth-card">
+      {!isRegister && <button type="button" className="auth-back" onClick={() => { if (window.history.length > 1) router.back(); else router.push("/"); }}><span className="material-symbols-outlined">arrow_back</span> KEMBALI</button>}
       <Link href="/" className="auth-mobile-brand">STALLION<span>STORE</span></Link>
       <h2>{isRegister ? "CREATE ACCOUNT" : "WELCOME BACK"}</h2>
       <p className="auth-intro">{isRegister ? "Daftar untuk mulai memilih sepatu favoritmu." : "Masukkan detail akunmu untuk melanjutkan."}</p>

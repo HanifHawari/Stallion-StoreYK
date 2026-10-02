@@ -17,7 +17,8 @@ export function WishlistPanel({ customerId, products, standalone = false }: { cu
     }
     update();
     window.addEventListener("storage", update);
-    return () => window.removeEventListener("storage", update);
+    window.addEventListener("stallion-wishlist-change", update);
+    return () => { window.removeEventListener("storage", update); window.removeEventListener("stallion-wishlist-change", update); };
   }, [customerId]);
   const selected = products.filter((product) => ids.includes(product.id));
   return <section className={"member-panel " + (standalone ? "member-full-panel member-wishlist-page" : "")} id="wishlist"><div className="member-panel-heading"><h2>WISHLIST SAYA</h2><Link href="/shoes">LIHAT PRODUK <span className="material-symbols-outlined">arrow_forward</span></Link></div>

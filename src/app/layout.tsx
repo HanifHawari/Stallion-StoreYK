@@ -3,6 +3,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { NavigationProgress } from "@/components/navigation-progress";
+import { DevelopmentAnnouncement } from "@/components/development-announcement";
 import { getCurrentCustomer } from "@/lib/auth";
 import "./globals.css";
 import "leaflet/dist/leaflet.css";
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   let customer = null;
   try { customer = await getCurrentCustomer(); } catch { customer = null; }
-  return <html lang="id"><body><NavigationProgress /><AuthProvider customer={customer}><SiteHeader /><main>{children}</main><SiteFooter /></AuthProvider></body></html>;
+  return <html lang="id"><body><NavigationProgress /><AuthProvider customer={customer}><SiteHeader /><main>{children}</main><SiteFooter /><DevelopmentAnnouncement /></AuthProvider></body></html>;
 }
 
 

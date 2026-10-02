@@ -38,6 +38,7 @@ export function SiteHeader() {
   const [count, setCount] = useState(0);
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   useEffect(() => {
     const update = () => setCount(readCart().reduce((sum, item) => sum + item.quantity, 0));
@@ -52,19 +53,38 @@ export function SiteHeader() {
       window.removeEventListener("storage", update);
     };
   }, []);
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") { setMenuOpen(false); setSearchOpen(false); }
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, []);
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     router.push("/shoes?q=" + encodeURIComponent(query.trim()));
     closeMenu();
+    setSearchOpen(false);
   }
   function closeMenu() {
     setMenuOpen(false);
     document.querySelectorAll("details.nav-dropdown").forEach((item) => { if (item instanceof HTMLDetailsElement) item.open = false; });
   }
+  function openProfileAnnouncement(event: MouseEvent<HTMLAnchorElement>) {
+    closeMenu();
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    setSearchOpen(false);
+    window.dispatchEvent(new Event("stallion-development-announcement"));
+  }
   return <>
     <header className="site-header"><div className="site-container header-inner">
-      <Link className="wordmark" href="/" aria-label="Stallion Store home" onClick={closeMenu}><img className="wordmark-logo" src="/images/logo/logo.png" alt="" /><span className="wordmark-name">STALLION<span>STORE</span></span></Link>
-      <nav className={"main-nav " + (menuOpen ? "is-open" : "")} aria-label="Navigasi utama">
+      <div className="header-leading">
+        <button type="button" className="menu-toggle" aria-label={menuOpen ? "Tutup menu" : "Buka menu"} aria-controls="main-menu" aria-expanded={menuOpen} onClick={() => { setMenuOpen(!menuOpen); setSearchOpen(false); }}><span className="material-symbols-outlined">{menuOpen ? "close" : "menu"}</span></button>
+        <Link className="profile-link" href={customer ? "/account" : "/login?next=/account"} aria-label={customer ? "Profil saya" : "Login"} onClick={openProfileAnnouncement}><img src="/images/logo/profil.png" alt="" /></Link>
+      </div>
+      <Link className="wordmark" href="/" aria-label="Stallion Store home" onClick={closeMenu}><span className="wordmark-name">STALLION<span>STORE</span></span></Link>
+      <nav id="main-menu" className={"main-nav " + (menuOpen ? "is-open" : "")} aria-label="Navigasi utama">
         <Link className={"nav-sale " + (pathname === "/sale" ? "active" : "")} href="/sale" onClick={closeMenu}>SALE</Link>
         <Link href="/#new-arrivals" onClick={closeMenu}>NEW ARRIVALS</Link>
         <details className="nav-dropdown" onMouseEnter={openOnHover} onMouseLeave={closeOnHover}><summary className={pathname === "/basketball" || pathname === "/running" ? "active" : ""}>BY SPORT <span className="material-symbols-outlined">expand_more</span></summary><div className="nav-dropdown-panel nav-list-panel">{sportLinks.map((link) => <Link href={link.href} key={link.href} onClick={closeMenu}>{link.label}</Link>)}</div></details>
@@ -73,11 +93,12 @@ export function SiteHeader() {
         <Link className={pathname === "/stores" ? "active" : ""} href="/stores" onClick={closeMenu}>OFFLINE STORES</Link>
       </nav>
       <div className="header-actions">
-        <form className="header-search" onSubmit={submitSearch} role="search"><span className="material-symbols-outlined">search</span><input aria-label="Cari sepatu atau brand" placeholder="Search shoes, brands..." value={query} onChange={(event) => setQuery(event.target.value)} /></form>
-        <Link className="profile-link" href={customer ? "/account" : "/login?next=/account"} aria-label={customer ? "Profil saya" : "Login"}><span className="material-symbols-outlined">person</span></Link>
-        <button type="button" className="cart-link" onClick={() => setCartOpen(true)} aria-label={"Keranjang, " + count + " produk"}><span className="material-symbols-outlined">shopping_bag</span>{count > 0 && <span className="cart-count">{count}</span>}</button>
-        <button className="menu-toggle" aria-label={menuOpen ? "Tutup menu" : "Buka menu"} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><span className="material-symbols-outlined">{menuOpen ? "close" : "menu"}</span></button>
+        <form className="header-search header-desktop-only" onSubmit={submitSearch} role="search"><span className="material-symbols-outlined">search</span><input aria-label="Cari sepatu atau brand" placeholder="Search shoes, brands..." value={query} onChange={(event) => setQuery(event.target.value)} /></form>
+        <Link className="profile-link header-desktop-only" href={customer ? "/account" : "/login?next=/account"} aria-label={customer ? "Profil saya" : "Login"} onClick={openProfileAnnouncement}><img src="/images/logo/profil.png" alt="" /></Link>
+        <button type="button" className="search-toggle" aria-label={searchOpen ? "Tutup pencarian" : "Buka pencarian"} aria-controls="header-search" aria-expanded={searchOpen} onClick={() => { setSearchOpen(!searchOpen); closeMenu(); }}><span className="material-symbols-outlined">{searchOpen ? "close" : "search"}</span></button>
+        <button type="button" className="cart-link" onClick={() => { setCartOpen(true); closeMenu(); setSearchOpen(false); }} aria-label={"Keranjang, " + count + " produk"}><img src="/images/logo/cart.png" alt="" />{count > 0 && <span className="cart-count">{count}</span>}</button>
       </div>
+      {searchOpen && <form id="header-search" className="header-search header-search-mobile" onSubmit={submitSearch} role="search"><input autoFocus aria-label="Cari sepatu atau brand" placeholder="Search shoes, brands..." value={query} onChange={(event) => setQuery(event.target.value)} /><button type="submit" aria-label="Cari"><span className="material-symbols-outlined">search</span></button></form>}
     </div></header>
     <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
   </>;

@@ -12,10 +12,16 @@ export function ProductCard({ product }: { product: Product }) {
   const wishlistKey = customer ? "stallion-store-wishlist-v1:" + customer.id : null;
   useEffect(() => {
     if (!wishlistKey) return;
-    try {
-      const saved: unknown = JSON.parse(localStorage.getItem(wishlistKey) ?? "[]");
-      setLiked(Array.isArray(saved) && saved.includes(product.id));
-    } catch { setLiked(false); }
+    const update = () => {
+      try {
+        const saved: unknown = JSON.parse(localStorage.getItem(wishlistKey) ?? "[]");
+        setLiked(Array.isArray(saved) && saved.includes(product.id));
+      } catch { setLiked(false); }
+    };
+    update();
+    window.addEventListener("stallion-wishlist-change", update);
+    window.addEventListener("storage", update);
+    return () => { window.removeEventListener("stallion-wishlist-change", update); window.removeEventListener("storage", update); };
   }, [product.id, wishlistKey]);
 
   function toggleLiked() {
@@ -25,6 +31,7 @@ export function ProductCard({ product }: { product: Product }) {
       const list = Array.isArray(saved) ? saved.filter((value): value is string => typeof value === "string") : [];
       const next = list.includes(product.id) ? list.filter((id) => id !== product.id) : [...list, product.id];
       localStorage.setItem(wishlistKey, JSON.stringify(next));
+      window.dispatchEvent(new Event("stallion-wishlist-change"));
       setLiked(next.includes(product.id));
     } catch { /* Storage can be unavailable; the card remains usable. */ }
   }
@@ -34,7 +41,7 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="product-card">
       <div className="product-visual">
         <Link className={product.hoverImage ? "has-hover-image" : undefined} href={"/shoes/" + product.slug} aria-label={"Lihat " + product.name}>
-          <Image className="product-image product-image-primary" src={product.image} alt={product.brand + " " + product.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1200px) 33vw, 20vw" unoptimized={!product.image.startsWith("/")} />
+          <Image className={"product-image product-image-primary" + (product.image.startsWith("/images/products/concept-") ? " product-image-full-frame" : "")} src={product.image} alt={product.brand + " " + product.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1200px) 33vw, 20vw" unoptimized={!product.image.startsWith("/")} />
           {product.hoverImage && <Image className="product-image product-image-hover" src={product.hoverImage} alt="" fill sizes="(max-width: 640px) 50vw, (max-width: 1200px) 33vw, 20vw" unoptimized={!product.hoverImage.startsWith("/")} />}
         </Link>
         <div className="product-badges">{discount && <span className="badge badge-discount">-{discount}%</span>}{product.badge && <span className="badge badge-dark">{product.badge}</span>}</div>
