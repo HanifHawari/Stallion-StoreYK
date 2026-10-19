@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fill, InfoPage, STORE_CONTACT } from "@/components/info-page";
+import { InfoPage, STORE_CONTACT } from "@/components/info-page";
 
 export const metadata: Metadata = { title: "Kebijakan Privasi", description: "Cara Stallion Store mengumpulkan, menggunakan, dan melindungi data pribadi pelanggan." };
 
@@ -16,11 +16,11 @@ export default function PrivacyPage() {
     <h2>PENGGUNAAN DATA</h2>
     <p>Data digunakan untuk memproses dan mengirim pesanan, mengelola akun, menghubungi kamu terkait pesanan, mengirim kabar koleksi (jika berlangganan), serta menjaga keamanan layanan.</p>
     <h2>PIHAK KETIGA</h2>
-    <p>Kami membagikan data seperlunya kepada: Midtrans (pembayaran), mitra pengiriman dan agregator ongkir (nama, telepon, alamat), serta penyedia hosting website. <Fill>daftar penyedia lain, mis. layanan email</Fill></p>
+    <p>Kami membagikan data seperlunya kepada: Midtrans (pembayaran), mitra pengiriman dan agregator ongkir (nama, telepon, alamat), serta penyedia hosting website. Penyedia hosting dan database kami adalah Vercel dan Neon; saat ini kami belum memakai layanan email pihak ketiga.</p>
     <h2>COOKIE & PENYIMPANAN DI PERANGKAT</h2>
-    <p>Kami memakai satu cookie sesi untuk menjaga kamu tetap login (berlaku 30 hari) dan penyimpanan lokal browser untuk isi keranjang. Kami tidak memakai cookie iklan. <Fill>sesuaikan jika nanti memakai analitik</Fill></p>
+    <p>Kami memakai satu cookie sesi untuk menjaga kamu tetap login (berlaku 30 hari) dan penyimpanan lokal browser untuk isi keranjang. Kami tidak memakai cookie iklan. Kami juga tidak memakai layanan analitik atau pelacak pihak ketiga.</p>
     <h2>PENYIMPANAN & KEAMANAN</h2>
-    <p>Data disimpan di server <Fill>lokasi/penyedia server</Fill> dan disimpan selama akun aktif atau selama diperlukan untuk kewajiban hukum dan pajak. <Fill>jangka waktu retensi</Fill></p>
+    <p>Data disimpan di server Vercel dan Neon yang berlokasi di Singapura, selama akun aktif atau selama diperlukan untuk kewajiban hukum dan pajak. Kamu dapat meminta penghapusan akun dan data pribadi melalui WhatsApp atau email kami; data pesanan yang wajib disimpan untuk pembukuan tetap kami simpan sesuai ketentuan yang berlaku.</p>
     <h2>HAK KAMU</h2>
     <p>Sesuai Undang-Undang No. 27 Tahun 2022 tentang Pelindungan Data Pribadi, kamu berhak mengakses, memperbaiki, dan meminta penghapusan data pribadimu, serta menarik persetujuan langganan email. Nama dan kata sandi dapat diubah langsung di Pengaturan Akun; permintaan lain kirim ke <a href={`mailto:${STORE_CONTACT.email}`}>{STORE_CONTACT.email}</a>.</p>
     <h2>PERUBAHAN KEBIJAKAN</h2>

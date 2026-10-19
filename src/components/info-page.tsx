@@ -9,10 +9,8 @@ export const STORE_CONTACT = {
   hours: "Setiap hari 14.00–21.00 WIB",
 };
 
-// Penanda isi template yang wajib dilengkapi toko sebelum launch (cari "[ISI OLEH CLIENT]").
-export function Fill({ children }: { children?: ReactNode }) {
-  return <mark className="client-fill">[ISI OLEH CLIENT{children ? <>: {children}</> : null}]</mark>;
-}
+// Tanggal terakhir kebijakan toko (syarat, privasi, pengembalian, FAQ) diperbarui. Ubah saat isinya diubah.
+export const POLICY_UPDATED = "19 Oktober 2026";
 
 export function InfoPage({ crumb, eyebrow, title, intro, updated = true, children }: { crumb: string; eyebrow: string; title: string; intro: ReactNode; updated?: boolean; children: ReactNode }) {
   return <>
@@ -22,7 +20,7 @@ export function InfoPage({ crumb, eyebrow, title, intro, updated = true, childre
       <div className="site-container info-layout">
         <article className="member-panel info-panel">
           <div className="info-panel-body info-content">
-            {updated && <p className="info-updated">Terakhir diperbarui: <Fill>tanggal</Fill></p>}
+            {updated && <p className="info-updated">Terakhir diperbarui: {POLICY_UPDATED}</p>}
             {children}
           </div>
         </article>

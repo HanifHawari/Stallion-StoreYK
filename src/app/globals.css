@@ -1188,7 +1188,6 @@ body:has(.auth-page) .auth-page { min-height:100vh; }
 .info-updated { color:#8994a3; font-size:12px; }
 .info-steps li { margin-bottom:12px; }
 .info-contact ul { padding-left:18px; }
-.client-fill { padding:1px 4px; border-radius:3px; background:#fff3c4; color:#7a5300; font-weight:600; }
 
 /* Detail pesanan */
 .order-details { display:grid; gap:14px; margin-top:16px; text-align:left; }
