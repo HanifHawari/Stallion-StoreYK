@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { getCurrentCustomer } from "@/lib/auth";
 import { CheckoutError, parseCheckoutItems, record } from "@/lib/commerce";
 import { getPool } from "@/lib/db";
+import { CHECKOUT_CLOSED_MESSAGE, DEV_MODE } from "@/lib/flags";
 import { getShippingRates, isShippingConfigured, type ShippingItem } from "@/lib/shipping";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  if (DEV_MODE) return NextResponse.json({ error: CHECKOUT_CLOSED_MESSAGE }, { status: 503 });
   if (!isShippingConfigured() || !process.env.DATABASE_URL) return NextResponse.json({ error: "Tarif pengiriman belum tersedia. Silakan coba lagi nanti." }, { status: 503 });
   try {
     if (!await getCurrentCustomer()) return NextResponse.json({ error: "Login diperlukan untuk checkout." }, { status: 401 });

@@ -17,17 +17,17 @@ export async function POST(request: Request) {
     let body: unknown;
     try { body = JSON.parse(raw); }
     catch { return NextResponse.json({ error: "Detail pesanan tidak valid." }, { status: 400 }); }
-    if (!body || typeof body !== "object" || Array.isArray(body) || !("orderId" in body) || !("email" in body) || typeof body.orderId !== "string" || typeof body.email !== "string") {
+    if (!body || typeof body !== "object" || Array.isArray(body) || !("orderId" in body) || typeof body.orderId !== "string") {
       return NextResponse.json({ error: "Detail pesanan tidak valid." }, { status: 400 });
     }
+    // Pesanan dicari per akun yang login; email penerima di checkout boleh berbeda dari email akun.
     const orderId = body.orderId.trim();
-    const email = body.email.trim().toLowerCase();
-    if (!/^ST-[a-f0-9-]{36}$/.test(orderId) || email.length > 254 || email !== customer.email.toLowerCase()) {
+    if (!/^ST-[a-f0-9-]{36}$/.test(orderId)) {
       return NextResponse.json({ error: "Pesanan tidak ditemukan untuk akun ini." }, { status: 404 });
     }
     const result = await getPool().query<OrderRow>(
-      "SELECT id, status, total_idr, created_at FROM orders WHERE id = $1 AND customer_id = $2 AND lower(customer_email) = $3",
-      [orderId, customer.id, email],
+      "SELECT id, status, total_idr, created_at FROM orders WHERE id = $1 AND customer_id = $2",
+      [orderId, customer.id],
     );
     const order = result.rows[0];
     if (!order) return NextResponse.json({ error: "Pesanan tidak ditemukan untuk akun ini." }, { status: 404 });

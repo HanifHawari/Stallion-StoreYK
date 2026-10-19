@@ -22,7 +22,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
     <div className="account-page"><div className="site-container member-container">
       <MemberNavigation active="dashboard" name={customer.name} preview={isPreview} />
       <section className="member-welcome" id="dashboard">
-        <div><span className="eyebrow">STALLION STORE MEMBER</span><h1>HALO, {customer.name.toLocaleUpperCase("id-ID")}!</h1><p>Selamat datang kembali. Kelola pesanan dan sepatu favoritmu di sini.</p><div className="member-welcome-actions"><OrderCheckDrawer email={customer.email} preview={isPreview} /><Link className="button button-outline-dark" href="/shoes">JELAJAHI SEPATU <span className="material-symbols-outlined">arrow_forward</span></Link></div></div>
+        <div><span className="eyebrow">STALLION STORE MEMBER</span><h1>HALO, {customer.name.toLocaleUpperCase("id-ID")}!</h1><p>Selamat datang kembali. Kelola pesanan dan sepatu favoritmu di sini.</p><div className="member-welcome-actions"><OrderCheckDrawer preview={isPreview} /><Link className="button button-outline-dark" href="/shoes">JELAJAHI SEPATU <span className="material-symbols-outlined">arrow_forward</span></Link></div></div>
         <div className="member-stat"><small>TOTAL PESANAN</small><strong>{orderCount}</strong><span>di akun ini</span></div>
       </section>
       <div className="member-shortcuts">

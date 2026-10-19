@@ -6,6 +6,7 @@ import { CheckoutError, parseCheckoutItems, record, RESERVATION_HOURS, type Chec
 import { getShippingRates, isShippingConfigured } from "@/lib/shipping";
 import { createMidtransTransaction } from "@/lib/midtrans";
 import { getCurrentCustomer } from "@/lib/auth";
+import { CHECKOUT_CLOSED_MESSAGE, DEV_MODE } from "@/lib/flags";
 
 export const runtime = "nodejs";
 
@@ -58,7 +59,7 @@ async function createOrder(client: PoolClient, items: CheckoutItem[], customer: 
     subtotal += row.price_idr * item.quantity;
     lines.push({ productId: item.productId, variantId: row.id, productName: row.name, image: row.image_url, size: row.size_eu, unitPrice: row.price_idr, quantity: item.quantity });
   }
-  const rates = await getShippingRates(customer.postalCode, lines.map((line) => ({ productId: line.productId, name: line.productName, value: line.unitPrice, quantity: line.quantity })));
+  const rates = await getShippingRates(customer.postalCode, lines.map((line) => ({ productId: line.productId, name: line.productName, value: line.unitPrice, quantity: line.quantity })), client);
   const rate = rates.find((item) => item.courierCode === shipping.courierCode && item.serviceCode === shipping.serviceCode);
   if (!rate || rate.price !== shipping.price) throw new CheckoutError("Tarif ongkir berubah atau layanan tidak tersedia. Cek ongkir kembali sebelum membayar.", 409);
   const total = subtotal + rate.price;
@@ -81,6 +82,7 @@ async function createOrder(client: PoolClient, items: CheckoutItem[], customer: 
 }
 
 export async function POST(request: Request) {
+  if (DEV_MODE) return NextResponse.json({ error: CHECKOUT_CLOSED_MESSAGE }, { status: 503 });
   if (!isShippingConfigured()) return NextResponse.json({ error: "Tarif pengiriman belum tersedia. Silakan coba lagi nanti." }, { status: 503 });
   if (!process.env.DATABASE_URL || !process.env.MIDTRANS_SERVER_KEY || !process.env.PUBLIC_SITE_URL) {
     return NextResponse.json({ error: "Checkout belum dikonfigurasi oleh pengelola toko." }, { status: 503 });
@@ -117,7 +119,7 @@ export async function POST(request: Request) {
     order = await createOrder(client, input.items, input.customer, user.id, input.shipping);
     await client.query("COMMIT");
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => undefined);
     return NextResponse.json({ error: error instanceof CheckoutError ? error.message : "Pesanan belum bisa dibuat. Coba lagi." }, { status: error instanceof CheckoutError ? error.status : 500 });
   } finally {
     client.release();

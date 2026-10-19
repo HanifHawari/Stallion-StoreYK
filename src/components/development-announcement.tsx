@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
-export function FooterAccountAnnouncement() {
-  return <button type="button" className="footer-account-button" onClick={() => window.dispatchEvent(new Event("stallion-development-announcement"))}>Akun Saya</button>;
+// Selama DEV_MODE akun (daftar/login) sudah dibuka, tetapi belanja belum: tombol checkout memanggil ini.
+export function openDevelopmentAnnouncement(): void {
+  window.dispatchEvent(new Event("stallion-development-announcement"));
 }
 
 export function DevelopmentAnnouncement() {
@@ -28,7 +29,7 @@ export function DevelopmentAnnouncement() {
       document.body.style.overflow = "hidden";
     }
     window.addEventListener("stallion-development-announcement", openAnnouncement);
-    if (pathname === "/login" || pathname === "/register") openAnnouncement();
+    if (pathname === "/checkout") openAnnouncement();
     return () => {
       window.removeEventListener("stallion-development-announcement", openAnnouncement);
       element?.close();

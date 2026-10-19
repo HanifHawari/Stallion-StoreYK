@@ -16,9 +16,8 @@ const statuses: Record<OrderStatus, string> = {
   stock_issue: "Perlu ditinjau",
 };
 
-export function OrderLookupForm({ email, compact = false }: { email: string; compact?: boolean }) {
+export function OrderLookupForm({ compact = false }: { compact?: boolean }) {
   const [orderId, setOrderId] = useState("");
-  const [enteredEmail, setEnteredEmail] = useState(email);
   const [result, setResult] = useState<CheckedOrder | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,7 +29,7 @@ export function OrderLookupForm({ email, compact = false }: { email: string; com
     try {
       const response = await fetch("/api/orders/check", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: orderId.trim(), email: enteredEmail.trim() }),
+        body: JSON.stringify({ orderId: orderId.trim() }),
       });
       const data: { order?: CheckedOrder; error?: string } = await response.json();
       if (!response.ok || !data.order) setError(data.error ?? "Pesanan tidak ditemukan.");
@@ -41,8 +40,6 @@ export function OrderLookupForm({ email, compact = false }: { email: string; com
   return <form className={"order-lookup-form " + (compact ? "order-lookup-compact" : "")} onSubmit={submit}>
     <label htmlFor={compact ? "drawer-order-id" : "page-order-id"}>NOMOR PESANAN<input id={compact ? "drawer-order-id" : "page-order-id"} value={orderId} onChange={(event) => setOrderId(event.target.value)} placeholder="ST-..." required maxLength={39} /></label>
     <small>Nomor pesanan tersedia pada halaman konfirmasi setelah checkout.</small>
-    <label htmlFor={compact ? "drawer-order-email" : "page-order-email"}>ALAMAT EMAIL<input id={compact ? "drawer-order-email" : "page-order-email"} type="email" value={enteredEmail} onChange={(event) => setEnteredEmail(event.target.value)} placeholder="email@contoh.com" required maxLength={254} /></label>
-    <small>Gunakan email akun yang dipakai saat checkout.</small>
     <button className="button button-dark" disabled={loading} type="submit"><span className="material-symbols-outlined">search</span> {loading ? "MENCARI..." : "CARI PESANAN"}</button>
     {error && <p className="order-lookup-error" role="alert">{error}</p>}
     {result && <div className="order-lookup-result" role="status"><span className="material-symbols-outlined">package_2</span><div><strong>{statuses[result.status]}</strong><small>{result.id}</small><span>{new Intl.DateTimeFormat("id-ID", { dateStyle: "long" }).format(new Date(result.createdAt))} · {formatRupiah(result.totalIdr)}</span></div><Link href={"/order/" + result.id}>DETAIL PESANAN <span className="material-symbols-outlined">arrow_forward</span></Link></div>}

@@ -42,6 +42,11 @@ export function writeCart(items: CartItem[]): boolean {
   } catch { return false; }
 }
 
+// Dipanggil tepat sebelum pindah ke halaman pembayaran: sengaja tanpa event agar halaman tidak berkedip kosong.
+export function clearCartSilently(): void {
+  try { localStorage.removeItem(CART_KEY); } catch { /* Storage tidak tersedia. */ }
+}
+
 export function addToCart(product: Product, size: string): boolean {
   if (!product.price || !product.sizes.includes(size)) return false;
   const items = readCart();

@@ -44,7 +44,7 @@ export default async function AccountOrdersPage({ searchParams }: { searchParams
   }
   return <div className="account-page"><div className="site-container member-container">
     <MemberNavigation active="orders" name={customer.name} preview={isPreview} />
-    <div className="member-page-heading"><div><span className="eyebrow">STALLION STORE MEMBER</span><h1>PESANAN SAYA</h1><p>Riwayat dan status pesanan dari akunmu.</p></div><OrderCheckDrawer email={customer.email} preview={isPreview} /></div>
+    <div className="member-page-heading"><div><span className="eyebrow">STALLION STORE MEMBER</span><h1>PESANAN SAYA</h1><p>Riwayat dan status pesanan dari akunmu.</p></div><OrderCheckDrawer preview={isPreview} /></div>
     <section className="member-panel member-full-panel">
       <div className="member-panel-heading"><h2>RIWAYAT PESANAN</h2><Link href={isPreview ? "/check-order?preview=1" : "/check-order"}>CEK NOMOR PESANAN <span className="material-symbols-outlined">arrow_forward</span></Link></div>
       {orders.length ? <div className="member-orders">{orders.map((order) => <Link href={"/order/" + order.id} className="member-order" key={order.id}><span className="material-symbols-outlined">package_2</span><span><strong>{order.id}</strong><small>{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" }).format(order.created_at)} · {statusNames[order.status]}</small></span><b>{formatRupiah(order.total_idr)}</b><span className="material-symbols-outlined">arrow_forward</span></Link>)}</div> : <div className="member-empty"><span className="material-symbols-outlined">package_2</span><p>Belum ada pesanan.</p><Link className="button button-dark" href="/shoes">MULAI BELANJA</Link></div>}

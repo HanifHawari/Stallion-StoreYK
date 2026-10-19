@@ -50,6 +50,37 @@ export async function createCustomerSession(customerId: string): Promise<void> {
   });
 }
 
+// Akun yang sedang login hanya jika berperan admin (migrasi 011). Terpisah dari getCurrentCustomer
+// agar halaman toko tidak bergantung pada kolom role.
+export async function getCurrentAdmin(): Promise<CurrentCustomer | null> {
+  if (!process.env.DATABASE_URL) return null;
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const result = await getPool().query<CurrentCustomer>(
+    "SELECT c.id, c.name, c.email FROM customer_sessions s JOIN customers c ON c.id = s.customer_id WHERE s.token_hash = $1 AND s.expires_at > now() AND c.role = 'admin'",
+    [tokenHash],
+  );
+  return result.rows[0] ?? null;
+}
+
+export function isValidNewPassword(password: unknown): password is string {
+  return typeof password === "string" && password.length >= 8 && password.length <= 128;
+}
+
+// Hash token sesi browser ini (untuk mempertahankan sesi saat mencabut sesi lain).
+export async function currentSessionTokenHash(): Promise<string | null> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  return token ? createHash("sha256").update(token).digest("hex") : null;
+}
+
+export async function revokeCustomerSessions(customerId: string, keepTokenHash: string | null = null): Promise<void> {
+  await getPool().query(
+    "DELETE FROM customer_sessions WHERE customer_id = $1 AND ($2::text IS NULL OR token_hash <> $2)",
+    [customerId, keepTokenHash],
+  );
+}
+
 export async function clearCustomerSession(): Promise<void> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;

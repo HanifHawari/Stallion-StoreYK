@@ -1,4 +1,6 @@
+import type { Pool, PoolClient } from "pg";
 import { CheckoutError, record, type ShippingRate } from "@/lib/commerce";
+import { getPool } from "@/lib/db";
 
 export type ShippingItem = { productId: string; name: string; value: number; quantity: number };
 
@@ -10,9 +12,10 @@ function configuration() {
   const origin = process.env.SHIPPING_ORIGIN_POSTAL_CODE?.trim() ?? "";
   const couriers = process.env.SHIPPING_COURIERS?.trim() || "jne,sicepat,anteraja";
   let packages: unknown;
-  try { packages = JSON.parse(process.env.SHIPPING_PACKAGES_JSON ?? "{}"); }
+  try { packages = JSON.parse(process.env.SHIPPING_PACKAGES_JSON?.trim() || "{}"); }
   catch { throw new CheckoutError("Tarif pengiriman belum tersedia. Silakan coba lagi nanti.", 503); }
-  if (!apiKey || !/^[0-9]{5}$/.test(origin) || !/^[a-z0-9_]+(,[a-z0-9_]+)*$/.test(couriers) || !record(packages) || !Object.keys(packages).length) {
+  // Berat paket kini utamanya dari kolom produk di database; SHIPPING_PACKAGES_JSON hanya cadangan.
+  if (!apiKey || !/^[0-9]{5}$/.test(origin) || !/^[a-z0-9_]+(,[a-z0-9_]+)*$/.test(couriers) || !record(packages)) {
     throw new CheckoutError("Tarif pengiriman belum tersedia. Silakan coba lagi nanti.", 503);
   }
   return { apiKey, origin: Number(origin), couriers, packages };
@@ -22,11 +25,19 @@ export function isShippingConfigured(): boolean {
   try { configuration(); return true; } catch { return false; }
 }
 
-export async function getShippingRates(postalCode: string, items: ShippingItem[]): Promise<ShippingRate[]> {
+// `db`: saat dipanggil dari dalam transaksi checkout, berikan koneksi transaksi itu. Mengambil koneksi kedua
+// dari pool sambil memegang koneksi pertama bisa membuat semua checkout macet saat pool penuh.
+export async function getShippingRates(postalCode: string, items: ShippingItem[], db: Pool | PoolClient = getPool()): Promise<ShippingRate[]> {
   const config = configuration();
   if (!/^[0-9]{5}$/.test(postalCode)) throw new CheckoutError("Masukkan kode pos tujuan yang valid.");
+  type DimensionRow = { id: string; weight_grams: number | null; length_cm: string | null; width_cm: string | null; height_cm: string | null };
+  const stored = new Map((await db.query<DimensionRow>(
+    "SELECT id, weight_grams, length_cm, width_cm, height_cm FROM products WHERE id = ANY($1::text[])", [items.map((item) => item.productId)],
+  )).rows.map((row) => [row.id, row]));
   const packages = items.map((item) => {
-    const box = config.packages[item.productId];
+    const row = stored.get(item.productId);
+    const fromDb = row?.weight_grams ? { weight: row.weight_grams, length: row.length_cm === null ? undefined : Number(row.length_cm), width: row.width_cm === null ? undefined : Number(row.width_cm), height: row.height_cm === null ? undefined : Number(row.height_cm) } : null;
+    const box: unknown = fromDb ?? config.packages[item.productId];
     if (!record(box) || typeof box.weight !== "number" || !Number.isSafeInteger(box.weight) || box.weight <= 0) {
       throw new CheckoutError("Tarif pengiriman untuk salah satu produk belum tersedia.", 503);
     }

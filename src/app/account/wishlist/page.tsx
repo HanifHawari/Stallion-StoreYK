@@ -15,6 +15,6 @@ export default async function AccountWishlistPage({ searchParams }: { searchPara
   return <div className="account-page"><div className="site-container member-container">
     <MemberNavigation active="wishlist" name={customer.name} preview={isPreview} />
     <div className="member-page-heading"><span className="eyebrow">STALLION STORE MEMBER</span><h1>WISHLIST SAYA</h1><p>Sepatu yang kamu simpan untuk dilihat kembali.</p></div>
-    <WishlistPanel customerId={customer.id} products={products} standalone />
+    <WishlistPanel products={products} standalone />
   </div></div>;
 }

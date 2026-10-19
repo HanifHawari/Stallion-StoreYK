@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { PoolClient } from "pg";
-import { getPool } from "@/lib/db";
+import { getPool, invalidateProducts } from "@/lib/db";
 import { getMidtransStatus, verifyMidtransSignature } from "@/lib/midtrans";
 
 export const runtime = "nodejs";
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     );
     const order = orderResult.rows[0];
     if (!order || order.total_idr !== idrAmount(verified.gross_amount) || order.total_idr !== idrAmount(notification.gross_amount)) {
-      await client.query("ROLLBACK");
+      await client.query("ROLLBACK").catch(() => undefined);
       return NextResponse.json({ error: "Order amount mismatch" }, { status: 400 });
     }
     const success = ["capture", "settlement"].includes(verified.transaction_status) &&
@@ -100,9 +100,11 @@ export async function POST(request: Request) {
       if (nextStatus) await client.query("UPDATE orders SET status = $2 WHERE id = $1", [verified.order_id, nextStatus]);
     }
     await client.query("COMMIT");
+    // Stok mungkin berkurang: katalog toko yang di-cache harus ikut diperbarui.
+    if (success) invalidateProducts();
     return NextResponse.json({ ok: true });
   } catch (error) {
-    await client.query("ROLLBACK");
+    await client.query("ROLLBACK").catch(() => undefined);
     console.error("Payment notification processing failed:", error instanceof Error ? error.message : "unknown error");
     return NextResponse.json({ error: "Unable to process notification" }, { status: 500 });
   } finally {

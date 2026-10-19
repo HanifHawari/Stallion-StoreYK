@@ -2,38 +2,22 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { showToast } from "@/components/toast";
 import { discountPercent, formatRupiah, type Product } from "@/lib/catalog";
+import { useWishlist } from "@/lib/use-wishlist";
 
 export function ProductCard({ product }: { product: Product }) {
   const { customer, ensureSignedIn } = useAuth();
-  const [liked, setLiked] = useState(false);
-  const wishlistKey = customer ? "stallion-store-wishlist-v1:" + customer.id : null;
-  useEffect(() => {
-    if (!wishlistKey) return;
-    const update = () => {
-      try {
-        const saved: unknown = JSON.parse(localStorage.getItem(wishlistKey) ?? "[]");
-        setLiked(Array.isArray(saved) && saved.includes(product.id));
-      } catch { setLiked(false); }
-    };
-    update();
-    window.addEventListener("stallion-wishlist-change", update);
-    window.addEventListener("storage", update);
-    return () => { window.removeEventListener("stallion-wishlist-change", update); window.removeEventListener("storage", update); };
-  }, [product.id, wishlistKey]);
+  const wishlist = useWishlist(customer?.id ?? null);
+  const liked = wishlist.has(product.id);
 
   function toggleLiked() {
-    if (!wishlistKey) { ensureSignedIn(); return; }
-    try {
-      const saved: unknown = JSON.parse(localStorage.getItem(wishlistKey) ?? "[]");
-      const list = Array.isArray(saved) ? saved.filter((value): value is string => typeof value === "string") : [];
-      const next = list.includes(product.id) ? list.filter((id) => id !== product.id) : [...list, product.id];
-      localStorage.setItem(wishlistKey, JSON.stringify(next));
-      window.dispatchEvent(new Event("stallion-wishlist-change"));
-      setLiked(next.includes(product.id));
-    } catch { /* Storage can be unavailable; the card remains usable. */ }
+    if (!customer) { ensureSignedIn("wishlist"); return; }
+    void wishlist.toggle(product.id).then(({ added, ok }) => {
+      if (!ok) showToast({ icon: "error", tone: "error", title: added ? "GAGAL MENYIMPAN" : "GAGAL MENGHAPUS", text: "Wishlist belum berubah. Periksa koneksi lalu coba lagi." });
+      else if (added) showToast({ icon: "favorite", title: "DISIMPAN KE WISHLIST", text: product.name, href: "/account/wishlist", linkLabel: "LIHAT WISHLIST" });
+    });
   }
 
   const discount = discountPercent(product);

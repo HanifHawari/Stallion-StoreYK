@@ -14,10 +14,7 @@ build/
 .env.*.local
 .env.development
 .env.production
-.env.example
 
-# Database
-db/
 
 # TypeScript
 *.tsbuildinfo
@@ -32,3 +29,9 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Database lokal PGlite (npm run db:local)
+.pglite/
+
+# Upload gambar admin (UPLOAD_DIR)
+storage/

@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { openDevelopmentAnnouncement } from "@/components/development-announcement";
 import { readCart, writeCart, type CartItem } from "@/lib/cart";
 import { formatRupiah } from "@/lib/catalog";
+import { DEV_MODE } from "@/lib/flags";
 
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -29,7 +31,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   function update(next: CartItem[]) { if (writeCart(next)) setItems(next); }
   function checkout() {
     onClose();
-    if (ensureSignedIn()) window.location.assign("/checkout");
+    if (!ensureSignedIn("checkout")) return;
+    // DEV_MODE: belanja online belum dibuka — popup hanya untuk member yang sudah login.
+    // Dibuka setelah drawer tertutup agar kunci scroll drawer sudah dilepas.
+    if (DEV_MODE) { window.setTimeout(openDevelopmentAnnouncement, 0); return; }
+    window.location.assign("/checkout");
   }
   return <div className="cart-drawer-backdrop" onMouseDown={onClose}>
     <aside className="cart-drawer" role="dialog" aria-modal="true" aria-label="Shopping bag" onMouseDown={(event) => event.stopPropagation()}>

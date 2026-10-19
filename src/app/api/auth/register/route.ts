@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import { createCustomerSession, hashPassword, newCustomerId } from "@/lib/auth";
 import { getPool } from "@/lib/db";
+import { ipKey, isAnyRateLimited, RATE_LIMIT_MESSAGE, recordAttempt } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,9 @@ export async function POST(request: Request) {
     const cleanName = name.trim();
     const cleanEmail = email.trim().toLowerCase();
     if (cleanName.length < 2 || cleanName.length > 100 || cleanEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) || password.length < 8 || password.length > 128) return NextResponse.json({ error: "Isi nama, email, dan kata sandi minimal 8 karakter." }, { status: 400 });
+    const limitKey = ipKey("register", request);
+    if (await isAnyRateLimited([[limitKey, 3, 3600]])) return NextResponse.json({ error: RATE_LIMIT_MESSAGE }, { status: 429 });
+    await recordAttempt(limitKey);
     const id = newCustomerId();
     await getPool().query("INSERT INTO customers (id, name, email, password_hash) VALUES ($1, $2, $3, $4)", [id, cleanName, cleanEmail, await hashPassword(password)]);
     await createCustomerSession(id);
